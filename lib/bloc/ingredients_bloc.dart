@@ -5,10 +5,7 @@ import 'package:rxdart/rxdart.dart';
 class IngredientsBloc {
   final _repository = Repository();
   final _ingredientsFetcher = PublishSubject<List<Ingredients>>();
-  final _selectedIngredientsFetcher = PublishSubject<List<Ingredients>>();
   Stream<List<Ingredients>> get ingredients => _ingredientsFetcher.stream;
-  Stream<List<Ingredients>> get selectedIngredients => _selectedIngredientsFetcher.stream;
-
 
 
   getIngredients() async {
@@ -31,11 +28,10 @@ class IngredientsBloc {
   }
 
   setSelectedIngredients(List<Ingredients> ingredients){
-    _selectedIngredientsFetcher.sink.add(ingredients);
+    _ingredientsFetcher.sink.add(ingredients);
   }
 
   disposeNetwork() {
     _ingredientsFetcher.close();
-    _selectedIngredientsFetcher.close();
   }
 }

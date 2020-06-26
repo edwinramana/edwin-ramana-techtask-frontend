@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_app/bloc/bloc.dart';
 import 'package:flutter_app/model/ingredients.dart';
+import 'package:flutter_app/pages/page_recipes.dart';
 import 'package:flutter_app/templates/color_loader.dart';
 import 'package:flutter_app/templates/widget_error.dart';
 import 'package:fluttertoast/fluttertoast.dart';
@@ -12,7 +13,6 @@ class PageHome extends StatefulWidget {
 }
 
 class _PageHomeState extends State<PageHome> {
-
   @override
   void initState() {
     super.initState();
@@ -28,20 +28,26 @@ class _PageHomeState extends State<PageHome> {
         title: Text("Front End Technical Test"),
       ),
       body: StreamBuilder(
-        stream: bloc.dateBloc.date,
+          stream: bloc.dateBloc.date,
           builder: (context, snapshot) {
-          DateTime date = snapshot.data??DateTime.now();
-        return Column(
-          children: <Widget>[
-            Expanded(flex: 1, child: DatePicker(selectedDate: date,)),
-            Expanded(flex: 8, child: IngredientList(selectedDate: date,)),
-          ],
-        );
-      }),
+            DateTime date = snapshot.data ?? DateTime.now();
+            return Column(
+              children: <Widget>[
+                Expanded(
+                    flex: 1,
+                    child: DatePicker(
+                      selectedDate: date,
+                    )),
+                Expanded(
+                    flex: 8,
+                    child: IngredientList(
+                      selectedDate: date,
+                    )),
+              ],
+            );
+          }),
     );
   }
-
-
 }
 
 class DatePicker extends StatefulWidget {
@@ -54,7 +60,6 @@ class DatePicker extends StatefulWidget {
 }
 
 class _DatePickerState extends State<DatePicker> {
-
   @override
   void initState() {
     super.initState();
@@ -112,10 +117,8 @@ class IngredientList extends StatefulWidget {
 }
 
 class _IngredientListState extends State<IngredientList> with WidgetsBindingObserver {
-  List<Ingredients> ingredients;
-  List<Ingredients> selectedIngredients;
   ScrollController _scrollController = new ScrollController();
-  var selectedDate;
+  DateTime selectedDate;
 
   @override
   void initState() {
@@ -168,52 +171,15 @@ class _IngredientListState extends State<IngredientList> with WidgetsBindingObse
                 });
               });
         } else if (snapshot.hasData) {
-          return RefreshIndicator(
-              onRefresh: () {
-                return _refreshIngredientsData();
-              },
-              child: (snapshot.data.length == 0)
-                  ? ListView(
-                      children: <Widget>[
-                        Text(
-                          "No data available",
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        )
-                      ],
-                    )
-                  : ListView.builder(
-                      physics: AlwaysScrollableScrollPhysics(),
-                      itemCount: snapshot.data.length,
-                      controller: _scrollController,
-                      itemBuilder: (BuildContext context, int index) {
-                        ingredients = snapshot.data;
-                        return Column(
-                          children: <Widget>[
-                            ListTile(
-                              title: Text(ingredients[index].title),
-                              subtitle: Text(ingredients[index].useBy.toString()),
-                              onLongPress: () {
-                                setState(() {
-                                  if (selectedIngredients.contains(ingredients[index])) {
-                                    Fluttertoast.showToast(
-                                        msg: ingredients[index].title + " has already been added",
-                                        toastLength: Toast.LENGTH_SHORT,
-                                        fontSize: 16.0);
-                                  } else {
-                                    Fluttertoast.showToast(
-                                        msg:
-                                            "Adding " + ingredients[index].title + " " + widget.selectedDate.toString(),
-                                        toastLength: Toast.LENGTH_SHORT,
-                                        fontSize: 16.0);
-                                    selectedIngredients.add(ingredients[index]);
-                                  }
-                                });
-                              },
-                            ),
-                            Divider()
-                          ],
-                        );
-                      }));
+          return Column(
+            children: <Widget>[
+              Expanded(
+                flex: 10,
+                child: _ingredientListView(snapshot.data),
+              ),
+              Expanded(flex: 1, child: _buttons(snapshot.data))
+            ],
+          );
         }
         return Container(
             alignment: Alignment.center,
@@ -224,5 +190,103 @@ class _IngredientListState extends State<IngredientList> with WidgetsBindingObse
             ));
       },
     );
+  }
+
+  Widget _ingredientListView(List<Ingredients> ingredientList) {
+    return RefreshIndicator(
+        onRefresh: () {
+          return _refreshIngredientsData();
+        },
+        child: (ingredientList.length == 0)
+            ? ListView(
+                children: <Widget>[
+                  Text(
+                    "No data available",
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  )
+                ],
+              )
+            : ListView.builder(
+                physics: AlwaysScrollableScrollPhysics(),
+                itemCount: ingredientList.length,
+                controller: _scrollController,
+                itemBuilder: (BuildContext context, int index) {
+                  return Column(
+                    children: <Widget>[
+                      Container(
+                        color: (ingredientList[index].isSelected) ? Colors.blue : Colors.white,
+                        child: ListTile(
+                          title: Text(ingredientList[index].title),
+                          subtitle: Text(ingredientList[index].useBy.toString()),
+                          onLongPress: () {
+                            setState(() {
+                              if (ingredientList[index].isSelected) {
+                                Fluttertoast.showToast(
+                                    msg: "Removing " + ingredientList[index].title,
+                                    toastLength: Toast.LENGTH_SHORT,
+                                    fontSize: 16.0);
+                                ingredientList[index].isSelected = false;
+                                bloc.ingredientsBloc.setSelectedIngredients(ingredientList);
+                              } else {
+                                if (ingredientList[index].useBy.isAfter(widget.selectedDate)) {
+                                  Fluttertoast.showToast(
+                                      msg: "Adding " + ingredientList[index].title.toString(),
+                                      toastLength: Toast.LENGTH_SHORT,
+                                      fontSize: 16.0);
+                                  ingredientList[index].isSelected = true;
+                                  bloc.ingredientsBloc.setSelectedIngredients(ingredientList);
+                                } else {
+                                  Fluttertoast.showToast(
+                                      msg: "Can't add ingredient.\nIngredient has expired on the selected date",
+                                      toastLength: Toast.LENGTH_SHORT,
+                                      fontSize: 16.0);
+                                }
+                              }
+                            });
+                          },
+                        ),
+                      ),
+                      Divider()
+                    ],
+                  );
+                }));
+  }
+
+  Widget _buttons(List<Ingredients> ingredients) {
+    return Container(
+        child: Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: <Widget>[
+        FlatButton(
+          color: Colors.blue,
+          child: Text("Submit"),
+          onPressed: () {
+            List<Ingredients> selectedIngredients = new List<Ingredients>();
+            for (int i = 0; i < ingredients.length; i++) {
+              if (ingredients[i].isSelected) selectedIngredients.add(ingredients[i]);
+            }
+            (selectedIngredients.length >= 1)
+                ? Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => PageRecipes(
+                        ingredientList: selectedIngredients,
+                      ),
+                    ),
+                  )
+                : Fluttertoast.showToast(
+                    msg: "There's no ingredients selected", toastLength: Toast.LENGTH_SHORT, fontSize: 16.0);
+          },
+        ),
+        FlatButton(
+          color: Colors.red,
+          child: Text("Clear"),
+          onPressed: () {
+            bloc.ingredientsBloc.getIngredients();
+          },
+        ),
+      ],
+    ));
   }
 }
