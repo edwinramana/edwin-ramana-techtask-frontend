@@ -6,7 +6,7 @@ List<Ingredients> ingredientsFromJson(String str) => List<Ingredients>.from(json
 
 String ingredientsToJson(List<Ingredients> data) => json.encode(List<dynamic>.from(data.map((x) => x.toJson())));
 
-@JsonSerializable()
+
 class Ingredients {
   Ingredients({
     this.title,
